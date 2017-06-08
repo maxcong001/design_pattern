@@ -1,8 +1,7 @@
-#pragma once
-
 /*
  * Copyright (c) 2016-20017 Max Cong <savagecm@qq.com>
- * this code can be found at https://github.com/maxcong001/design_pattern/edit/master/include/singleton/singleton.hpp
+ * this code can be found at
+ * https://github.com/maxcong001/design_pattern/edit/master/include/singleton/singleton.hpp
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -25,39 +24,41 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <mutex>
 template <typename T>
-class Singleton
-{
-  public:
-    template <typename... Args>
-    static T *Instance(Args &&... args)
-    {
-        if (m_pInstance == nullptr)
-            m_pInstance = new T(std::forward<Args>(args)...);
-        return m_pInstance;
-    }
-    static T *GetInstance()
-    {
-        if (m_pInstance == nullptr)
-            throw std::logic_error("the instance is not init, please initialize the instance first");
-        return m_pInstance;
-    }
-    static void DestroyInstance()
-    {
-        delete m_pInstance;
-        m_pInstance = nullptr;
-    }
+class Singleton {
+ public:
+  template <typename... Args>
+  static T *Instance(Args &&... args) {
+    std::lock_guard<std::mutex> lck(mtx);
+    if (m_pInstance == nullptr)
+      m_pInstance = new T(std::forward<Args>(args)...);
+    return m_pInstance;
+  }
+  static T *GetInstance() {
+    if (m_pInstance == nullptr)
+      throw std::logic_error(
+          "the instance is not init, please initialize the instance first");
+    return m_pInstance;
+  }
+  static void DestroyInstance() {
+    delete m_pInstance;
+    m_pInstance = nullptr;
+  }
 
-  private:
-    Singleton(void);
-    virtual ~Singleton(void);
-    Singleton(const Singleton &);
-    Singleton &operator=(const Singleton &);
+ private:
+  Singleton(void);
+  virtual ~Singleton(void);
+  Singleton(const Singleton &);
+  Singleton &operator=(const Singleton &);
 
-  private:
-    static T *m_pInstance;
+ private:
+  static T *m_pInstance;
+  static std::mutex mtx;
 };
 
 template <class T>
 T *Singleton<T>::m_pInstance = nullptr;
+template <class T>
+std::mutex Singleton<T>::mtx;
 // auto project_instance = Singleton<class name>::Instance();
