@@ -1,11 +1,12 @@
 #include "singleton/singleton.hpp"
 #include "util/logger.hpp"
-class test {
- public:
-  void hello_word() { __LOG(debug, "hello world!"); }
-};
+
 
 void singleton_example() {
+  class test {
+   public:
+    void hello_word() { __LOG(debug, "hello world!"); }
+  };
   auto project_instance = Singleton<test>::Instance();
   project_instance->hello_word();
   Singleton<test>::DestroyInstance();
