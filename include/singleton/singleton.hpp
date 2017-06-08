@@ -60,3 +60,4 @@ class Singleton
 
 template <class T>
 T *Singleton<T>::m_pInstance = nullptr;
+// auto project_instance = Singleton<class name>::Instance();
