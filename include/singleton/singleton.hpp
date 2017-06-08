@@ -36,12 +36,14 @@ class Singleton {
     return m_pInstance;
   }
   static T *GetInstance() {
+    std::lock_guard<std::mutex> lck(mtx);
     if (m_pInstance == nullptr)
       throw std::logic_error(
           "the instance is not init, please initialize the instance first");
     return m_pInstance;
   }
   static void DestroyInstance() {
+    std::lock_guard<std::mutex> lck(mtx);
     delete m_pInstance;
     m_pInstance = nullptr;
   }
