@@ -8,7 +8,7 @@ class test {
 void singleton_example() {
   auto project_instance = Singleton<test>::Instance();
   project_instance->hello_word();
-  project_instance->DestroyInstance();
+  Singleton<test>::DestroyInstance();
 }
 
 int main() {
