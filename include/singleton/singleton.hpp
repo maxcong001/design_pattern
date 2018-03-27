@@ -87,6 +87,9 @@ template <typename T>
 void Singleton<T>::DestroyInstance()
 {
   std::lock_guard<std::mutex> lck(mtx);
-  delete m_pInstance;
+  if (m_pInstance)
+  {
+    delete m_pInstance;
+  }
   m_pInstance = nullptr;
 }
