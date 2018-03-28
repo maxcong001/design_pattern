@@ -1,5 +1,5 @@
 #include "singleton/singleton.hpp"
-#include "util/logger.hpp"
+#include "logger/logger.hpp"
 
 
 void singleton_example() {

@@ -1,4 +1,4 @@
-#pragma once
+
 /*
  * Copyright (c) 2016-20017 Max Cong <savagecm@qq.com>
  * this code can be found at https://github.com/maxcong001/logger
@@ -25,97 +25,29 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
-
-#include <memory>
-#include <mutex>
-#include <string>       // std::string
-#include <iostream>     // std::cout
-#include <sstream>      // std::ostringstream
-
-typedef std::basic_ostream<char> tostream;
-typedef std::basic_istream<char> tistream;
-typedef std::basic_ostringstream<char> tostringstream;
-typedef std::basic_istringstream<char> tistringstream;
-
-class logger_iface
-{
-  public:
-    logger_iface(void) = default;
-    virtual ~logger_iface(void) = default;
-
-    logger_iface(const logger_iface &) = default;
-    logger_iface &operator=(const logger_iface &) = default;
-
-  public:
-    virtual void debug(const std::string &msg, const std::string &file, std::size_t line) = 0;
-    virtual void info(const std::string &msg, const std::string &file, std::size_t line) = 0;
-    virtual void warn(const std::string &msg, const std::string &file, std::size_t line) = 0;
-    virtual void error(const std::string &msg, const std::string &file, std::size_t line) = 0;
-};
-
-class logger : public logger_iface
-{
-  public:
-    //! log level
-    enum class log_level
-    {
-        error = 0,
-        warn = 1,
-        info = 2,
-        debug = 3
-    };
-
-  public:
-    logger(log_level level = log_level::info);
-    ~logger(void) = default;
-
-    logger(const logger &) = default;
-    logger &operator=(const logger &) = default;
-
-  public:
-    void debug(const std::string &msg, const std::string &file, std::size_t line);
-    void info(const std::string &msg, const std::string &file, std::size_t line);
-    void warn(const std::string &msg, const std::string &file, std::size_t line);
-    void error(const std::string &msg, const std::string &file, std::size_t line);
-
-  private:
-    log_level m_level;
-    std::mutex m_mutex;
-};
-
-void debug(const std::string &msg, const std::string &file, std::size_t line);
-void info(const std::string &msg, const std::string &file, std::size_t line);
-void warn(const std::string &msg, const std::string &file, std::size_t line);
-void error(const std::string &msg, const std::string &file, std::size_t line);
-
-#define __LOGGING_ENABLED
-
-#ifdef __LOGGING_ENABLED
-#define __LOG(level, msg) \
-{                       \
-    tostringstream  var;\
-    var << "[fuction:" << __func__ << "] " <<msg;     \
-    level(var.str(), __FILE__, __LINE__); \
-}
-#else
-#define __LOG(level, msg)
-#endif /* __LOGGING_ENABLED */
-
-std::unique_ptr<logger_iface> active_logger(new logger(logger::log_level::debug)); //nullptr;
-
+#include "logger/logger.hpp"
 static const char black[] = {0x1b, '[', '1', ';', '3', '0', 'm', 0};
 static const char red[] = {0x1b, '[', '1', ';', '3', '1', 'm', 0};
 static const char yellow[] = {0x1b, '[', '1', ';', '3', '3', 'm', 0};
 static const char blue[] = {0x1b, '[', '1', ';', '3', '4', 'm', 0};
 static const char normal[] = {0x1b, '[', '0', ';', '3', '9', 'm', 0};
 
-logger::logger(log_level level)
-    : m_level(level) {}
+std::unique_ptr<logger_iface> active_logger(new logger(logger_iface::log_level::error)); //nullptr;
 
+logger::logger(logger_iface::log_level level)
+    : m_level(level)
+{
+    _id = 0;
+    _buffer.fill(nullptr);
+}
+void logger::set_log_level(logger_iface::log_level level)
+{
+    m_level = level;
+}
 void logger::debug(const std::string &msg, const std::string &file, std::size_t line)
 {
-    if (m_level >= log_level::debug)
+    write2buff(msg, file, line, "debug");
+    if (m_level >= logger_iface::log_level::debug)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         std::cout << "[" << black << "DEBUG" << normal << "] [" << file << ":" << line << "] " << msg << std::endl;
@@ -124,7 +56,8 @@ void logger::debug(const std::string &msg, const std::string &file, std::size_t 
 
 void logger::info(const std::string &msg, const std::string &file, std::size_t line)
 {
-    if (m_level >= log_level::info)
+    write2buff(msg, file, line, "info");
+    if (m_level >= logger_iface::log_level::info)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         std::cout << "[" << blue << "INFO " << normal << "] [" << file << ":" << line << "] " << msg << std::endl;
@@ -133,7 +66,8 @@ void logger::info(const std::string &msg, const std::string &file, std::size_t l
 
 void logger::warn(const std::string &msg, const std::string &file, std::size_t line)
 {
-    if (m_level >= log_level::warn)
+    write2buff(msg, file, line, "warn");
+    if (m_level >= logger_iface::log_level::warn)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         std::cout << "[" << yellow << "WARN " << normal << "] [" << file << ":" << line << "] " << msg << std::endl;
@@ -142,13 +76,36 @@ void logger::warn(const std::string &msg, const std::string &file, std::size_t l
 
 void logger::error(const std::string &msg, const std::string &file, std::size_t line)
 {
-    if (m_level >= log_level::error)
+    write2buff(msg, file, line, "error");
+    if (m_level >= logger_iface::log_level::error)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         std::cerr << "[" << red << "ERROR" << normal << "] [" << file << ":" << line << "] " << msg << std::endl;
     }
 }
-
+void logger::write2buff(const std::string &msg, const std::string &file, std::size_t line, const std::string &log_level)
+{
+    // maybe we will lost 1 or 2 log here in multi-thread env, that is not matter....
+    if (++_id < _max_buff)
+    {
+    }
+    else
+    {
+        _id = 0;
+    }
+    std::shared_ptr<std::string> ptr1(new std::string("[" + file + ":" + std::to_string(line) + "][" + log_level + "]" + msg));
+    _buffer.at(_id) = ptr1;
+}
+void logger::dump()
+{
+    for (auto tmp : _buffer)
+    {
+        if (tmp)
+        {
+            std::cout << *tmp << std::endl;
+        }
+    }
+}
 void debug(const std::string &msg, const std::string &file, std::size_t line)
 {
     if (active_logger)
@@ -171,4 +128,22 @@ void error(const std::string &msg, const std::string &file, std::size_t line)
 {
     if (active_logger)
         active_logger->error(msg, file, line);
+}
+
+void set_log_level(logger_iface::log_level level)
+{
+    if (active_logger)
+        active_logger->set_log_level(level);
+}
+
+void dump_log()
+{
+    if (active_logger)
+        active_logger->dump();
+}
+
+void set_max_log_buff(unsigned int num)
+{
+    if (active_logger)
+        active_logger->set_max_buff(num);
 }
