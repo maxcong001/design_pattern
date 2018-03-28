@@ -13,7 +13,7 @@ void singleton_example() {
 }
 
 int main() {
-  set_log_level(logger_iface::log_level::warn);
+  set_log_level(logger_iface::log_level::debug);
   // this is example for singleton
   singleton_example();
 }
